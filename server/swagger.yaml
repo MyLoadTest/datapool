@@ -364,7 +364,7 @@ paths:
             type: string
       responses:
         200:
-          description: A JSON object or primitive value
+          description: An array containing a JSON object or primitive value. Array will be empty if the queue is empty.
           content:
             application/json:
               schema:

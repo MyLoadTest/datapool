@@ -274,8 +274,10 @@ router.get('/:queue/peek', param('queue').isAlphanumeric().withMessage('queue na
     db.get(query, (err, row) => {
         if (err) {
             next(err);
-        } else {
-            return res.json(JSON.parse(row.item)); // assume that parse() will never throw an exception
+        } else if (!row) {
+            return res.json([]);
+        } else  {
+            return res.json(new Array(JSON.parse(row.item))); // assume that parse() will never throw an exception
         }
     }); 
 });
