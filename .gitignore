@@ -1,0 +1,8 @@
+.vscode/
+node_modules/
+usercode/
+TEMP/
+
+*.sqlite
+swagger.json
+scratchpad.js

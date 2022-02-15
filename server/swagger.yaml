@@ -1,0 +1,550 @@
+openapi: 3.0.3
+info:
+  title: MyLoadTest Datapool API
+  description: The MyLoadTest Datapool is a centralised, persistent data store. ...TODO
+  version: 0.0.2
+  contact:
+    name: MyLoadTest
+    url: https://www.myloadtest.com
+servers:
+  - url: http://localhost:3000
+    description: Self-hosted datapool
+tags:
+  - name: counter
+    description: A counter is a number that is incremented each time it is read.
+  - name: map
+    description: A map contains key-value pairs. The values may be a JSON object or a primitive value.
+  - name: person
+    description: A person has a name, age, gender and email address. A new person is returned on every read.
+  - name: queue
+    description: A queue is an ordered list of items. Every time the queue is read, an item is removed.
+  - name: function
+    description: A function is user-submitted JavaScript code that may be invoked via a web service call.
+components:
+  schemas:
+    Counter:
+      description: a counter value (must be a positive whole number)
+      type: integer
+      minimum: 0
+      example: 99
+    MapValue:
+      # A schema without a type matches any data type (except null).
+      # The use-case for storing an array is unclear, but there is no reason to exclude it.
+      description: Can be any value - string, number, boolean, array or object.
+      example:
+        firstName: John
+        lastName: Smith
+        registered: true
+    Person:
+      description: the details of a random person
+      type: object
+      properties:
+        firstName:
+          type: string
+          description: the person's given name
+        lastName:
+          type: string
+          description: the person's surname
+        gender:
+          type: string
+          description: the person's first name (sorry, non-binary genders are not supported yet)
+          enum: ['male', 'female']
+        birthdate:
+          type: string
+          description: a date of birth making the person 21-65 years old (in YYYY-MM-DD format)
+          format: date
+        email:
+          type: string
+          description: unique email address
+          format: email
+      example:
+        firstName: John
+        lastName: Smith
+        gender: male
+        birthdate: '1970-07-04'
+        email: john.smith.a97b@myloadtest.email
+    QueueItem:
+      description: Any value may be added to the queue
+      type: array
+      items:
+        anyOf:
+          - type: string
+          - type: number
+          - type: object
+      example:
+        - orderNum: '0001'
+          total: '99.50'
+          postage: '10.50'
+paths:
+  /counter:
+    get:
+      summary: Get a list of all counters
+      description: Returns an array of counter names that are currently active. Counter *values* are not returned - each counter must be read individually.
+      tags: [counter]
+      responses:
+        200:
+          description: A list of counter names, or an empty list if no counters are defined
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: ['orderCount', 'emailSuffix']
+  /counter/{name}:
+    post:
+      summary: Initialise a counter
+      description: Initialise a counter with a custom starting value. If you just need a counter that starts
+        at 1, you can call ```GET /counter/{name}``` directly.
+      tags: [counter]
+      parameters:
+        - in: path
+          name: name
+          description: The name of the counter
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Counter'
+      responses:
+        201:
+          description: An empty response body is returned when the counter is initialised or reset.
+        400:
+          description: Bad request. Counter value must be a positive integer.
+    get:
+      summary: Get the value of a counter
+      description: Get the value of a counter (counter names are case sensitive).
+      tags: [counter]
+      parameters:
+        - in: path
+          name: name
+          description: The name of the counter
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Returns the counter value. Note that a 404 response is not returned if the counter does not exist. Instead, the counter is created and initialised to 1.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Counter'
+        400:
+          description: The counter name is invalid
+    delete:
+      summary: Remove or reset a counter
+      description: Remove or reset a counter (no option to delete multiple counters at the same time)
+      tags: [counter]
+      parameters:
+        - in: path
+          name: name
+          description: The name of the counter
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: The counter was deleted successfully. Note that there is no point returning a 404 if the counter is not found, as it is the same outcome if it is deleted or never existed in the first place.
+        400:
+          description: The counter name is invalid
+  /map:
+    get:
+      summary: Get a list of all keys in the map
+      description: Returns an array of key names that have a saved value. Map values are not returned - each mapped key-value pair must be read individually.
+      tags: [map]
+      responses:
+        200:
+          description: A list of map names, or an empty list if no maps are defined
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: ['user1@myloadtest.email', 'user2@myloadtest.email']
+  /map/{name}:
+    post:
+      summary: Save a value to a key
+      description: Save a value to a map key. If the key already exists, the value will be overwritten. The value may be a JSON object, array or primitive value. If you need to avoid overwriting existing keys then check whether the key exists with ```GET /map/{name}``` first.
+      tags: [map]
+      parameters:
+        - in: path
+          name: name
+          description: The name of the map key
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MapValue'
+      responses:
+        201:
+          description: An empty response body is returned when the value is saved.
+        400:
+          description: Bad request. Saved value must be a valid object or primitive value.
+    get:
+      summary: Get the value associated with a key
+      description: Get the value for a key-value pair (map keys are case sensitive).
+      tags: [map]
+      parameters:
+        - in: path
+          name: name
+          description: The name of the map key
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: A JSON object or primitive value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MapValue'
+        400:
+          description: The map name is invalid
+        404:
+          description: The map name was not found
+    delete:
+      summary: Remove a key-value pair
+      description: Remove a map (no option to delete multiple maps at the same time)
+      tags: [map]
+      parameters:
+        - in: path
+          name: name
+          description: The name of the map key
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: The map was deleted successfully. Note that there is no point returning a 404 if the map key is not found, as it is the same outcome if it is deleted or never existed in the first place.
+        400:
+          description: The map name is invalid
+  /person:
+    get:
+      summary: Get the details of a random person
+      description: Returns the a realistic-looking name, date of birth, etc. to use when registering users or filling out other web forms. The firstName/lastName combination is random, so is not guaranteed to be unique, however the email address *is* unique (as long as the ```persons.sqlite``` database is not deleted).
+      tags: [person]
+      responses:
+        200:
+          description: A person's details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Person'
+  /queue:
+    get:
+      summary: Get a list of all queue names
+      description: Returns an array of queue names. Note that the queues may be empty.
+      tags: [queue]
+      responses:
+        200:
+          description: A list of queue names, or an empty list if no queues have been created
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: ['orderNums', 'newUsers']
+  /queue/{name}:
+    post:
+      summary: Save one or more items to the queue
+      description: Save a list of items to the specifed queue. If the queue does not exist, it will be created.
+      tags: [queue]
+      parameters:
+        - in: path
+          name: name
+          description: The name of the queue
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueueItem'
+      responses:
+        201:
+          description: An empty response body is returned when the value is saved.
+        400:
+          description: Bad request. Saved value must be an array of items.
+        413:
+          description: Payload too large. The request body may be up to 100kb.
+    get:
+      summary: Get the next item from the queue
+      description: Get the next item from the specified queue. To remove multiple items, append the ```?limit=x``` query string to the request. If the queue contains fewer items than specified by the limit, then only that number of items will be returned.
+      tags: [queue]
+      parameters:
+        - in: path
+          name: name
+          description: The name of the queue
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: limit
+          description: The maximum number of items to return (defaults to 1)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+      responses:
+        200:
+          description: An array of JSON objects or primitive values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueItem'
+        400:
+          description: The queue name is invalid
+        404:
+          description: The queue name was not found
+    delete:
+      summary: Clear the queue
+      description: Delete the specified queue and all its queued items. There is no need to explicitly re-create a queue after clearing/deleting it as the first call to ```POST /queue/{name}``` will automatically create a queue with the specified name.
+      tags: [queue]
+      parameters:
+        - in: path
+          name: name
+          description: The name of the queue
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: The queue was deleted successfully. Note that there is no point returning a 404 if the queue is not found, as it is the same outcome if it is deleted or never existed in the first place.
+        400:
+          description: The queue name is invalid
+        404:
+          description: The queue name was not found
+  /queue/{name}/depth:
+    get:
+      summary: Get the number of items on the queue
+      description: Returns the number of items on the specified queue. The queue is empty when depth is zero.
+      tags: [queue]
+      parameters:
+        - in: path
+          name: name
+          description: The name of the queue
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: The item count for the queue
+          content:
+            application/json:
+              schema:
+                type: integer
+        400:
+          description: The queue name is invalid
+        404:
+          description: The queue name was not found
+  /queue/{name}/peek:
+    get:
+      summary: Read the next item from the queue without removing it
+      description: Read the next item from the specified queue, but do not remove the item from the queue.
+      tags: [queue]
+      parameters:
+        - in: path
+          name: name
+          description: The name of the queue
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: A JSON object or primitive value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueItem'
+        400:
+          description: The queue name is invalid
+        404:
+          description: The queue name was not found
+  /queue/{name}/export:
+    get:
+      summary: Read all items from the queue without removing them
+      description: Read all the items from the specified queue, but do not remove any items from the queue.
+      deprecated: true
+      tags: [queue]
+      parameters:
+        - in: path
+          name: name
+          description: The name of the queue
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: A JSON object or primitive value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueItem'
+        400:
+          description: The queue name is invalid
+        404:
+          description: The queue name was not found
+  /code:
+    get:
+      summary: Get a list of function modules
+      description: Returns an array of module names that are available. Call ```GET /code/{module}``` to see the functions available in a particular module.
+      tags: [function]
+      responses:
+        200:
+          description: A list of module names, or an empty list if no modules are available
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: ['auth', 'base64']
+  /code/{module}:
+    post:
+      summary: Upload a function module
+      description: "Upload a single Node.js module with named exports that may be called with ```POST /code/{module}/{function}``` or ```GET /code/{module}/{function}```. Note that the Swagger-UI page does not support file uploads properly, so files may be uploaded with curl e.g. ```curl -X POST 'http://localhost:3000/code/example' -H 'content-type: text/plain' --data-binary '@example.js'```. This is a massive security problem, so it might be best to disable this feature and manually copy user-code modules to the datapool server."
+      deprecated: true
+      tags: [function]
+      parameters:
+        - in: path
+          name: module
+          description: The name of the module
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          text/plain: # this is a file upload. See: https://swagger.io/docs/specification/describing-request-body/file-upload/
+            schema:
+              type: string
+              format: binary
+      responses:
+        201:
+          description: An empty response body is returned when the module has been uploaded successfully.
+        400:
+          description: There is something wrong with the uploaded module.
+        409:
+          description: Conflict. Module already exists.
+    get:
+      summary: Get a list of functions in the module
+      description: Returns a list of named exports from the Node.js module. Any of these may be called as a function. Function parameters (argument lists) are not returned.
+      tags: [function]
+      parameters:
+        - in: path
+          name: module
+          description: The name of the module
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: A list of module names, or an empty list if no modules are available
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: ['generateAuthHeader', 'base64encode', 'base64decode']
+        400:
+          description: The module name is invalid
+        404:
+          description: The module was not found
+    delete:
+      summary: Remove a function module
+      description: Delete a function module from the filesystem and clear the module cache.
+      tags: [function]
+      parameters:
+        - in: path
+          name: module
+          description: The name of the module
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: The module was deleted successfully
+        400:
+          description: The module name is invalid
+        404:
+          description: The module was not found
+  /code/{module}/{function}:
+    post:
+      summary: Call a function with arguments
+      description: Invoke a function with an array of arguments (in the POST body) passed to the function.
+      tags: [function]
+      parameters:
+        - in: path
+          name: module
+          description: The name of the module
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: function
+          description: The name of the function
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              description: Function arguments in array may be any type
+              type: array
+              items:
+                anyOf:
+                  - type: string
+                  - type: number
+                  - type: object
+              example: ['hello', 'world']
+      responses:
+        201:
+          description: An empty response body is returned when the counter is initialised or reset.
+        400:
+          description: Bad request. Invalid module/function name, or invalid POST body
+        404:
+          description: The module or the function was not found
+        500:
+          description: The function threw a runtime exception
+    get:
+      summary: Call a function with no arguments
+      description: Invoke a function with no arguments passed to the function
+      tags: [function]
+      parameters:
+        - in: path
+          name: module
+          description: The name of the module
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: function
+          description: The name of the function
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: The function's return value in JSON format
+        400:
+          description: The module or function name is invalid
+        404:
+          description: The module or function was not found
+        500:
+          description: The function threw a runtime exception

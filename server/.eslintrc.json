@@ -1,0 +1,18 @@
+/*
+https://eslint.org/docs/user-guide/configuring/configuration-files
+https://gist.github.com/nkbt/9efd4facb391edbf8048
+
+can require() any file on the filesystem. Must whitelist
+https://eslint.org/docs/rules/no-restricted-imports
+Function constructor can define a new function based on string literals.
+*/
+{
+    "env": {
+        "node": true,
+        "es2021": true
+    },
+    "rules": {
+       "no-eval": "error",
+       "no-implied-eval": "error"
+    }
+}
