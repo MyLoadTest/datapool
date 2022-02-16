@@ -221,17 +221,17 @@ router.delete('/:queue', param('queue').isAlphanumeric().withMessage('queue name
 
     const queueName = req.params.queue;
     if (! await dbTableExists(queueName)) {
-        return res.status(404).json({ queue: queueName, message: 'Queue was not found'});
+        return res.status(200).end(); // does not return an HTTP 404 if the queue does not exist
+    } else {
+        const query = `DROP TABLE ${queueName}`; // DROP TABLE performs an implicit DELETE before dropping the table
+        db.run(query, (err) => {
+            if (err) {
+                next(err);
+            } else {
+                return res.status(200).end();
+            }
+        });
     }
-
-    const query = `DROP TABLE ${queueName}`; // DROP TABLE performs an implicit DELETE before dropping the table
-    db.run(query, (err) => {
-        if (err) {
-            next(err);
-        } else {
-            return res.status(200).end();
-        }
-    });
 });
 
 

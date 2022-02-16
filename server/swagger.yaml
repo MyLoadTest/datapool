@@ -325,8 +325,6 @@ paths:
           description: The queue was deleted successfully. Note that there is no point returning a 404 if the queue is not found, as it is the same outcome if it is deleted or never existed in the first place.
         400:
           description: The queue name is invalid
-        404:
-          description: The queue name was not found
   /queue/{name}/depth:
     get:
       summary: Get the number of items on the queue
