@@ -99,10 +99,10 @@ router.get('/', (req, res, next) => {
             } else {
                 const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${counter.toString(32)}@myloadtest.email`
                 return res.json({
-                    firstname: firstName,
-                    lastname: lastName,
+                    firstName: firstName,
+                    lastName: lastName,
                     gender: gender,
-                    birthdate: birthdate.toISOString().slice(0, 10),
+                    birthDate: birthdate.toISOString().slice(0, 10),
                     email: email
                 });
             }

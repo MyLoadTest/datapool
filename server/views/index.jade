@@ -14,26 +14,27 @@ block content
     code(class="language-cpp")
       | web_reg_save_param_json(
       |     "ParamName=Param_FirstName",
-      |     "QueryString=$.firstname", // query syntax: https://github.com/jayway/JsonPath
+      |     "QueryString=$.firstName", // query syntax: https://github.com/jayway/JsonPath
       |     LAST);
       | 
       | web_reg_save_param_json(
       |     "ParamName=Param_LastName",
-      |     "QueryString=$.lastname",
+      |     "QueryString=$.lastName",
       |     LAST);
       | 
       | web_reg_save_param_json(
-      |     "ParamName=Param_LastName",
+      |     "ParamName=Param_Email",
       |     "QueryString=$.email",
       |     LAST);
       | 
+      | web_reg_find("Text=firstName", LAST);
       | web_url("GetPerson",
       |     "URL=http://{ServerName}/person",
       |     "Resource=0",
       |     LAST);
       | /*
       | Example response:
-      |     {"firstname":"Robin","lastname":"Kilback","gender":"male","birthdate":"1967-03-22","email":"robin.kilback.1b3@myloadtest.email"}
+      |     {"firstName":"Robin","lastName":"Kilback","gender":"male","birthDate":"1967-03-22","email":"robin.kilback.1b3@myloadtest.email"}
       | */
 
 
@@ -55,6 +56,7 @@ block content
       |     LAST);
       | 
       | // The orderId will be incremented by 1 each time this endpoint is called
+      | web_reg_find("Text=HTTP/1.1 200 OK", "Search=Headers", LAST);
       | web_url("GetOrderId",
       |     "URL=http://{ServerName}/counter/orderId",
       |     "Resource=0",
@@ -213,49 +215,50 @@ block content
       | 
       | web_reg_save_param_json(
       |     "ParamName=Param_SavedOrderNum",
-      |     "QueryString=$.orderNum", // query syntax: https://github.com/jayway/JsonPath
+      |     "QueryString=$.[0].orderNum", // query syntax: https://github.com/jayway/JsonPath
       |     LAST);
       | 
       | web_reg_save_param_json(
       |     "ParamName=Param_SavedFirstName",
-      |     "QueryString=$.firstName",
+      |     "QueryString=$.[0].firstName",
       |     LAST);
       | 
       | web_reg_save_param_json(
       |     "ParamName=Param_SavedLastName",
-      |     "QueryString=$.lastName",
+      |     "QueryString=$.[0].lastName",
       |     LAST);
       | 
       | web_reg_save_param_json(
       |     "ParamName=Param_SavedEmail",
-      |     "QueryString=$.email",
+      |     "QueryString=$.[0].email",
       |     LAST);    
       | 
       | web_reg_save_param_json(
       |     "ParamName=Param_SavedAddress",
-      |     "QueryString=$.addressLine1",
+      |     "QueryString=$.[0].addressLine1",
       |     LAST);
       | 
       | web_reg_save_param_json(
       |     "ParamName=Param_SavedOrderTotal",
-      |     "QueryString=$.orderTotal",
+      |     "QueryString=$.[0].orderTotal",
       |     LAST);
       | 
       | // Read the order details that I saved to the queue during the load test
+      | web_reg_find("Text=HTTP/1.1 200 OK", "Search=Headers", LAST);
       | web_url("GetOrderDetails",
       |     "URL=http://{ServerName}/queue/OrdersCreated",
       |     "Resource=0",
       |     LAST);
       | /*
       | Example response: 
-      | {
+      | [{
       |     "orderNum": 1027466
       |     "firstName":"Robin",
       |     "lastName":"Kilback",
       |     "email":"robin.kilback.1b3@myloadtest.email",
       |     "addressLine1": "1940 Test Street",
       |     "orderTotal": "$105.45"
-      | }
+      | }]
       | */
       | 
       | web_reg_save_param_json(
