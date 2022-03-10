@@ -4,7 +4,6 @@ const createError = require('http-errors');
 const logger = require('morgan');
 
 
-//const indexRouter = require('./routes/index');
 const apiRouter = require('./routes/api');
 const codeRouter = require('./routes/code');
 const counterRouter = require('./routes/counter');
@@ -35,7 +34,6 @@ app.get('/examples', (req, res, next) => {
 });
 
 
-//app.use('/', indexRouter);
 app.use('/api', apiRouter);
 app.use('/code', codeRouter);
 app.use('/counter', counterRouter);
