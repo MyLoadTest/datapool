@@ -4,7 +4,7 @@ const createError = require('http-errors');
 const logger = require('morgan');
 
 
-const indexRouter = require('./routes/index');
+//const indexRouter = require('./routes/index');
 const apiRouter = require('./routes/api');
 const codeRouter = require('./routes/code');
 const counterRouter = require('./routes/counter');
@@ -25,7 +25,17 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use("/swagger.yaml", express.static(__dirname + '/swagger.yaml'));
 
 
-app.use('/', indexRouter);
+// Static pages
+app.get('/', (req, res, next) => {
+    res.render('index', { title: 'MyLoadTest Datapool' });
+});
+
+app.get('/examples', (req, res, next) => {
+    res.render('examples', { title: 'MyLoadTest Datapool' });
+});
+
+
+//app.use('/', indexRouter);
 app.use('/api', apiRouter);
 app.use('/code', codeRouter);
 app.use('/counter', counterRouter);

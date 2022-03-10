@@ -1,0 +1,308 @@
+extends layout
+
+block content
+  h1 Example Code for LoadRunner
+
+
+  p Get a random person's name and a unique email address for user registration.
+  pre
+    code(class="language-cpp")
+      | web_reg_save_param_json(
+      |     "ParamName=Param_FirstName",
+      |     "QueryString=$.firstName", // query syntax: https://github.com/jayway/JsonPath
+      |     LAST);
+      | 
+      | web_reg_save_param_json(
+      |     "ParamName=Param_LastName",
+      |     "QueryString=$.lastName",
+      |     LAST);
+      | 
+      | web_reg_save_param_json(
+      |     "ParamName=Param_Email",
+      |     "QueryString=$.email",
+      |     LAST);
+      | 
+      | web_reg_find("Text=firstName", LAST);
+      | web_url("GetPerson",
+      |     "URL=http://{ServerName}/person",
+      |     "Resource=0",
+      |     LAST);
+      | /*
+      | Example response:
+      |     {"firstName":"Robin","lastName":"Kilback","gender":"male","birthDate":"1967-03-22","email":"robin.kilback.1b3@myloadtest.email"}
+      | */
+
+
+  p Get a unique orderId for order creation.
+  pre
+    code(class="language-cpp")
+      | /*
+      | Before starting, you can initialise counter to a unique starting number-range value with:
+      | ```curl -X POST --data '1027465' --header "Content-Type: application/json" --verbose http://localhost:3000/counter/orderId```
+      | Note: you only need to do this once - not before every test.
+      | */
+      | 
+      | web_reg_save_param_ex(
+      |     "ParamName=Param_OrderId",
+      |     "LB=", // empty LB/RB will save entire response body
+      |     "RB=",
+      |     SEARCH_FILTERS,
+      |     "Scope=BODY",
+      |     LAST);
+      | 
+      | // The orderId will be incremented by 1 each time this endpoint is called
+      | web_reg_find("Text=HTTP/1.1 200 OK", "Search=Headers", LAST);
+      | web_url("GetOrderId",
+      |     "URL=http://{ServerName}/counter/orderId",
+      |     "Resource=0",
+      |     LAST);
+      | /*
+      | Example response:
+      |     1027466
+      | */
+
+
+  p Bulk load of single-use data into a queue.
+  pre
+    code(class="language-cpp")
+      | /*
+      | Option 1 is to load a single value into the queue on each iteration.
+      | Values are read from a file-based parameter, and the virtual user will stop when it reaches the
+      | end of the file - as long as the following file parameter options are selected:
+      | -   Select next row: Unique
+      | -   When out of values: Abort Vuser
+      | */
+      | 
+      | int i;
+      | 
+      | for (i=0; i<10000; i++) {
+      |     web_reg_find("Text=HTTP/1.1 201 Created", "Search=Headers", LAST);
+      |     web_custom_request("SaveVinSingle",
+      |         "URL=http://{ServerName}/queue/vin",
+      |         "Method=POST",
+      |         "Resource=0",
+      |         "EncType=application/json", // this sets the content-type header. POSTs will not work if this is incorrect.
+      |         "Body=[{VIN}]",
+      |         LAST);
+      |     
+      |     lr_advance_param("VIN"); // VIN = Vehicle Identification Number
+      | }
+
+
+  pre
+    code(class="language-cpp")
+      | /*
+      | Option 2 is to load multiple items into the queue on each iteration.
+      | While this reduces the number of HTTP requests needed to load the data, you will need to know
+      | the number of rows that need to be loaded (as this cannot be determined at runtime for a File
+      | parameter). The other limitation is that only 100KB of POST data may be sent per request, so
+      | your BLOCK_SIZE should be selected with this in mind. The parameter file should be configured
+      | with "Select next row: Sequential" - if it is "Unique", then the virtual user will abort on the
+      | last iteration.
+      | */
+      | 
+      | int i, blocks, j, items;
+      | int ROW_COUNT = 10000;
+      | int BLOCK_SIZE = 300;
+      | char* payload = (char*) malloc(102400); // allocating with ```char body[25600];``` gives a "too many local variables" compiler error
+      | 
+      | if (ROW_COUNT % BLOCK_SIZE > 0) {
+      |     blocks = (ROW_COUNT / BLOCK_SIZE) + 1;
+      | } else {
+      |     blocks = ROW_COUNT / BLOCK_SIZE;
+      | }
+      | 
+      | for (i=1; i<=blocks; i++) {
+      |     if (i == blocks) {
+      |         items = ROW_COUNT % BLOCK_SIZE; // on the last iteration...
+      |     } else {
+      |         items = BLOCK_SIZE;
+      |     }
+      |     lr_output_message("Creating payload %d with %d items", i, items);
+      | 
+      |     strcpy(payload, "Body=["); // values must be inside an array
+      | 
+      |     for (j=1; j<=items; j++) {
+      |         strcat(payload, lr_eval_string("{VIN}"));
+      |         if (j != items) {
+      |             strcat(payload, ", "); // comma-separate items except for the last one (to be well-formed JSON)
+      |         }
+      |         lr_advance_param("VIN"); // VIN = Vehicle Identification Number
+      |     }
+      | 
+      |     strcat(payload, "]");
+      | 
+      |     web_reg_find("Text=HTTP/1.1 201 Created", "Search=Headers", LAST);
+      |     web_custom_request("SaveVinBlock",
+      |         "URL=http://{ServerName}/queue/vinyyy",
+      |         "Method=POST",
+      |         "Resource=0",
+      |         "EncType=application/json", // this sets the content-type header. POSTs will not work if this is incorrect.
+      |         payload,
+      |         LAST);
+      | }
+      | 
+      | free(payload);
+
+
+  p Generate an authentication token for a web service request
+  pre
+    code(class="language-cpp")
+      | /*
+      | Imagine that there is a complicated signing function that is used to generate Authorization
+      | headers for web service requests. It is far to complicated to re-write in C, but there is a
+      | JavaScript version available. This code has been copied to a module called "auth" in the
+      | ./usercode directory of the datapool. The auth module has a function that takes the following
+      | string arguments: ```function generateToken(url, keyName, keyValue)```.
+      | The argument values will be POSTed to the datapool endpoint in an array.
+      | */
+      | 
+      | web_reg_save_param_json(
+      |     "ParamName=Param_Token",
+      |     "QueryString=$.*", // query syntax: https://github.com/jayway/JsonPath
+      |     LAST);
+      | 
+      | web_reg_find("Text=SharedAccessSignature", LAST);
+      | web_custom_request("GenerateAuthToken",
+      |     "URL=http://{ServerName}/code/auth/generateToken",
+      |     "Method=POST",
+      |     "EncType=application/json", // this sets the content-type header. POSTs will not work if this is incorrect.
+      |     "Resource=0",
+      |     "Body="
+      |     "["
+      |     "  \"https://www.example.com/api\"" // url
+      |     "  \"PerformanceTestingSaSPolicy\"" // keyName
+      |     "  \"eWNhSRnmNn0eskw3PwCQ3eKluo=\"" // keyValue
+      |     "]",
+      |     LAST);
+      | /*
+      | Example response:
+      |     "SharedAccessSignature sr=https%3A%2F%2Fwww.example.com/api&sig=N7Z3vYgOTmfIOcfP6azsXpkiJ3r4ba944ZOpslSHj6U%3D&se=1644801305&skn=PerformanceTestingSaSPolicy"
+      | */
+      | 
+      | // Set the auth header for future web service calls
+      | web_add_auto_header("Authorization", "{Param_Token}");
+
+
+  p Post-test verification
+  pre
+    code(class="language-cpp")
+      | /*
+      | Load testing is not just about response times. Checking for errors is important too.
+      | Imagine there was some code in the system under test that was not threadsafe. In rare
+      | circumstances, when two orders are submitted at the same time, the customer details of one
+      | order will be overwritten by the customer details from the other order, causing one customer
+      | to receive two orders, and the other to receive none.
+      | To check for this, the details for all orders are saved to a queue as they are created then,
+      | at the end of the test, all the order details are checked in the system under test. This could
+      | be done in two ways:
+      | 1.  generate an SQL query to check the records in the database (a manual task)
+      | 2.  if there is a web services API, it could be called automatically by a verification script
+      | 
+      | // Before running the order creation test, it would be a good idea to make sure that the queue is empty
+      | web_reg_find("Text=HTTP/1.1 200 OK", "Search=Headers", LAST);
+      | web_custom_request("ClearQueue",
+      |     "URL=http://{ServerName}/queue/OrdersCreated",
+      |     "Method=DELETE",
+      |     "Resource=0",
+      |     LAST);
+      | */
+      | 
+      | web_reg_save_param_json(
+      |     "ParamName=Param_SavedOrderNum",
+      |     "QueryString=$.[0].orderNum", // query syntax: https://github.com/jayway/JsonPath
+      |     LAST);
+      | 
+      | web_reg_save_param_json(
+      |     "ParamName=Param_SavedFirstName",
+      |     "QueryString=$.[0].firstName",
+      |     LAST);
+      | 
+      | web_reg_save_param_json(
+      |     "ParamName=Param_SavedLastName",
+      |     "QueryString=$.[0].lastName",
+      |     LAST);
+      | 
+      | web_reg_save_param_json(
+      |     "ParamName=Param_SavedEmail",
+      |     "QueryString=$.[0].email",
+      |     LAST);    
+      | 
+      | web_reg_save_param_json(
+      |     "ParamName=Param_SavedAddress",
+      |     "QueryString=$.[0].addressLine1",
+      |     LAST);
+      | 
+      | web_reg_save_param_json(
+      |     "ParamName=Param_SavedOrderTotal",
+      |     "QueryString=$.[0].orderTotal",
+      |     LAST);
+      | 
+      | // Read the order details that I saved to the queue during the load test
+      | web_reg_find("Text=HTTP/1.1 200 OK", "Search=Headers", LAST);
+      | web_url("GetOrderDetails",
+      |     "URL=http://{ServerName}/queue/OrdersCreated",
+      |     "Resource=0",
+      |     LAST);
+      | /*
+      | Example response: 
+      | [{
+      |     "orderNum": 1027466
+      |     "firstName":"Robin",
+      |     "lastName":"Kilback",
+      |     "email":"robin.kilback.1b3@myloadtest.email",
+      |     "addressLine1": "1940 Test Street",
+      |     "orderTotal": "$105.45"
+      | }]
+      | */
+      | 
+      | web_reg_save_param_json(
+      |     "ParamName=Param_LookupAddress",
+      |     "QueryString=$.customer.address1",
+      |     LAST);
+      | 
+      | // Get order details from the system under test using their REST API
+      | web_reg_find("Text=customer", LAST);
+      | web_url("LookupOrder",
+      |     "URL=http://www.example.com/api/orders/{Param_OrderNum}",
+      |     "Resource=0",
+      |     LAST);
+      | /*
+      | Example response: 
+      | {
+      |     "orderId": 1027466,
+      |     "productIds": [
+      |         "HL9899",
+      |         "SP4940",
+      |         "AM0472",
+      |         "PX9402",
+      |     ],
+      |     "customer": {
+      |         "customerId": 2348900,
+      |          "firstName":"Robin",
+      |         "lastName":"Kilback",
+      |         "email":"robin.kilback.1b3@myloadtest.email",
+      |         "address1": "1940 Test Street",
+      |         "address2": "",
+      |         "suburb": "Mont Albert",
+      |         "state": "VIC",
+      |         "postcode": "3127"
+      |     },
+      |     "payment": {
+      |         "status": "complete",
+      |         "debit": "$105.45"
+      | }
+      | */
+      | 
+      | // Check the address value (repeat checks for the other order details)
+      | if (strcmp(lr_eval_string("Param_SavedAddress"), lr_eval_string("{Param_LookupAddress}")) != 0) {
+      |     lr_error_message("Address does not match for order %s. Expected: %s Actual: %s", lr_eval_string("{Param_OrderNum}"), lr_eval_string("{Param_SavedAddress}"), lr_eval_string("{Param_LookupAddress}"));
+      | }
+
+
+  //- syntax highlighting is only used on the index page
+  link(rel='stylesheet', href='/stylesheets/highlight.min.css')
+  script(src="/javascripts/highlight.min.js")
+  script(src="/javascripts/highlight.cpp.min.js")
+  script.
+    hljs.highlightAll();
