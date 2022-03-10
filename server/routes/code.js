@@ -190,7 +190,8 @@ router.post('/:module/:function', param('module').isAlphanumeric().withMessage('
     }
     
     const args = req.body;
-    const payload = module[functionName].apply(null, args); // runtime errors will be caught by Express error handler
+    //const payload = module[functionName].apply(null, args); // runtime errors will be caught by Express error handler
+    const payload = module[functionName](...args);
     return res.json(payload);
 });
 
@@ -225,35 +226,3 @@ router.get('/:module/:function', param('module').isAlphanumeric().withMessage('m
 });
 
 module.exports = router;
-
-
-
-
-
-
-/*
-
-POST /function/crypto
-// POST body is a JS module
--   {"source": }
--   cannnot convert JS code to JSON, as code will be lost/corrupted.
-
->   The escape() function computes a new string in which certain characters have been replaced by a hexadecimal escape sequence
-
-
-GET /function/crypto (the module)
-
-POST /function/crypto/base32encode (invoke the function)
--   POST body is an array of arguments
-
-
-
-*/
-
-/*
-Security:
--   can I request /usercode/example.js directly?
-
-
-
-*/

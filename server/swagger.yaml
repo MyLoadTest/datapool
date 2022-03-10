@@ -1,3 +1,4 @@
+# This OpenAPI definition file can be checked here: https://editor.swagger.io/
 openapi: 3.0.3
 info:
   title: MyLoadTest Datapool API
@@ -257,7 +258,7 @@ paths:
   /queue/{name}:
     post:
       summary: Save one or more items to the queue
-      description: Save a list of items to the specifed queue. If the queue does not exist, it will be created.
+      description: Save a list of items to the specifed queue. If the queue does not exist, it will be created. Note that the queue items do not expire. They are persistent until removed/dequeued (or the underlying SQLite database file is removed).
       tags: [queue]
       parameters:
         - in: path
