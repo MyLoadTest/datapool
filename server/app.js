@@ -22,6 +22,7 @@ app.use(logger('dev'));
 app.use(express.json({ strict: false})); // POST and PUT bodies with application/json will be automatically converted into objects
 //app.use(express.urlencoded({ extended: false })); // parse POST and PUT bodies with "content-type: application/x-www-form-urlencoded"
 app.use(express.static(path.join(__dirname, 'public')));
+app.use("/swagger.yaml", express.static(__dirname + '/swagger.yaml'));
 
 
 app.use('/', indexRouter);

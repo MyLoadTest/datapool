@@ -2,8 +2,9 @@ extends layout
 
 block content
   h1= title
-  p This is the self-hosted version of the #{title}. TODO: description of what the data pool is for
-  p The web service endpoints are described in the interactive #[a(href="/api/") API documentation].
+  p The MyLoadTest Datapool is a solution for shared and persistent data for load testing. Virtual users can read and write to a common pool of data, store data between tests, and avoid the administrative overhead of managing single-use data.
+  p The web service endpoints are described in the interactive #[a(href="/swagger-ui/") API documentation], or you can download the #[a(href="swagger.yaml") Swagger file] directly.
+  p This is the self-hosted version of the datapool. A cloud-based version can be found at #[a(href="https://datapool.myloadtest.com/") datapool.myloadtest.com].
 
 
   h2 Example Code for LoadRunner
