@@ -4,12 +4,13 @@ const createError = require('http-errors');
 const logger = require('morgan');
 
 
-const apiRouter = require('./routes/api');
 const codeRouter = require('./routes/code');
 const counterRouter = require('./routes/counter');
 const mapRouter = require('./routes/map');
 const personRouter = require('./routes/person');
 const queueRouter = require('./routes/queue');
+const swaggerUiRouter = require('./routes/swagger-ui');
+
 
 const app = express();
 
@@ -34,12 +35,12 @@ app.get('/examples', (req, res, next) => {
 });
 
 
-app.use('/api', apiRouter);
 app.use('/code', codeRouter);
 app.use('/counter', counterRouter);
 app.use('/map', mapRouter);
 app.use('/person', personRouter);
 app.use('/queue', queueRouter);
+app.use('/swagger-ui', swaggerUiRouter);
 
 
 // catch 404 and forward to error handler
